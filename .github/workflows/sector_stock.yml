@@ -1,0 +1,35 @@
+name: Scrape Sector & Stock
+
+on:
+  schedule:
+    - cron: "*/10 5-9 * * 0-4"  # every 10 min during approx NEPSE hours
+  workflow_dispatch:
+
+jobs:
+  sector:
+    runs-on: ubuntu-latest
+    env:
+      CENTRAL_REPO_OWNER: <A-username>
+      CENTRAL_REPO_NAME: nepse-central
+      CENTRAL_REPO_TOKEN: ${{ secrets.CENTRAL_REPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install
+      - run: node sector.js
+
+  stock:
+    runs-on: ubuntu-latest
+    env:
+      CENTRAL_REPO_OWNER: <A-username>
+      CENTRAL_REPO_NAME: nepse-central
+      CENTRAL_REPO_TOKEN: ${{ secrets.CENTRAL_REPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install
+      - run: node stock.js
