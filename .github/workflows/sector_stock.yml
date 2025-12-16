@@ -11,23 +11,17 @@ jobs:
     timeout-minutes: 10
 
     env:
-      CENTRAL_REPO_OWNER: <YOUR-USERNAME>
-      CENTRAL_REPO_NAME: nepse-central
+      CENTRAL_REPO_OWNER: sakshyambanjade
+      CENTRAL_REPO_NAME: nepse-quant-bot-central
       CENTRAL_REPO_TOKEN: ${{ secrets.CENTRAL_REPO_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-
-      - name: Install deps
-        run: npm install
-
-      - name: Install Playwright browsers
-        run: npx playwright install
-
+      - run: npm install
+      - run: npx playwright install
       - name: Run sector scraper
         env:
           FORCE_RUN: "true"
@@ -38,23 +32,17 @@ jobs:
     timeout-minutes: 10
 
     env:
-      CENTRAL_REPO_OWNER: <YOUR-USERNAME>
-      CENTRAL_REPO_NAME: nepse-central
+      CENTRAL_REPO_OWNER: sakshyambanjade
+      CENTRAL_REPO_NAME: nepse-quant-bot-central
       CENTRAL_REPO_TOKEN: ${{ secrets.CENTRAL_REPO_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-
-      - name: Install deps
-        run: npm install
-
-      - name: Install Playwright browsers
-        run: npx playwright install
-
+      - run: npm install
+      - run: npx playwright install
       - name: Run stock scraper
         env:
           FORCE_RUN: "true"
