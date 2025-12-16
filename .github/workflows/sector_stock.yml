@@ -11,87 +11,91 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Scraper Repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Install deps
-        run: npm install
+      - name: Install Dependencies
+        run: |
+          npm install
+          npx playwright install --with-deps
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run sector scraper
+      - name: Run Sector Scraper
         env:
           FORCE_RUN: "true"
         run: node sector.js
 
-      - name: Clone central repo
+      - name: Sync and Push to Central Repo
         env:
           PAT: ${{ secrets.NEPSE_SCRAPER_PA }}
         run: |
           cd /tmp
-          git clone --depth 1 https://sakshyambanjade:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git central-repo
+          git clone --depth 1 https://x-access-token:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git central-repo
+          
+          mkdir -p central-repo/data/raw
+          cp -rv $GITHUB_WORKSPACE/data/raw/* central-repo/data/raw/ || true
 
-      - name: Copy data to central repo
-        run: |
-          mkdir -p /tmp/central-repo/data/raw
-          cp -rv $GITHUB_WORKSPACE/data/raw/* /tmp/central-repo/data/raw/ || true
-
-      - name: Push to central repo
-        env:
-          PAT: ${{ secrets.NEPSE_SCRAPER_PA }}
-        run: |
-          cd /tmp/central-repo
+          cd central-repo
           git config user.email "action@github.com"
-          git config user.name "GitHub Action"
+          git config user.name "GitHub Action Bot"
+          
           git add data/
-          git commit -m "data: sector" || true
-          git push https://sakshyambanjade:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git main
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "data: sector update $(date -u +'%Y-%m-%d %H:%M:%S') UTC"
+            git push https://x-access-token:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git main
+            echo "✅ Pushed sector to central"
+          else
+            echo "⏭ No changes to commit"
+          fi
 
   stock:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Scraper Repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Install deps
-        run: npm install
+      - name: Install Dependencies
+        run: |
+          npm install
+          npx playwright install --with-deps
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run stock scraper
+      - name: Run Stock Scraper
         env:
           FORCE_RUN: "true"
         run: node stock.js
 
-      - name: Clone central repo
+      - name: Sync and Push to Central Repo
         env:
           PAT: ${{ secrets.NEPSE_SCRAPER_PA }}
         run: |
           cd /tmp
-          git clone --depth 1 https://sakshyambanjade:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git central-repo
+          git clone --depth 1 https://x-access-token:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git central-repo
+          
+          mkdir -p central-repo/data/raw
+          cp -rv $GITHUB_WORKSPACE/data/raw/* central-repo/data/raw/ || true
 
-      - name: Copy data to central repo
-        run: |
-          mkdir -p /tmp/central-repo/data/raw
-          cp -rv $GITHUB_WORKSPACE/data/raw/* /tmp/central-repo/data/raw/ || true
-
-      - name: Push to central repo
-        env:
-          PAT: ${{ secrets.NEPSE_SCRAPER_PA }}
-        run: |
-          cd /tmp/central-repo
+          cd central-repo
           git config user.email "action@github.com"
-          git config user.name "GitHub Action"
+          git config user.name "GitHub Action Bot"
+          
           git add data/
-          git commit -m "data: stock" || true
-          git push https://sakshyambanjade:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git main
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "data: stock update $(date -u +'%Y-%m-%d %H:%M:%S') UTC"
+            git push https://x-access-token:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git main
+            echo "✅ Pushed stock to central"
+          else
+            echo "⏭ No changes to commit"
+          fi
