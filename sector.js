@@ -36,11 +36,7 @@ async function main() {
       args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"]
     });
 
-    const context = await browser.createBrowserContext({
-      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    });
-
-    const page = await context.newPage();
+    const page = await browser.newPage();
     await page.setExtraHTTPHeaders({
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -55,6 +51,7 @@ async function main() {
       try {
         await page.goto(URL, { waitUntil: "networkidle", timeout: 30000 });
         loaded = true;
+        console.log("✅ Page loaded");
       } catch (e) {
         retries--;
         console.log(`⚠ Retry... (${retries} left)`);
@@ -86,7 +83,6 @@ async function main() {
 
     console.log("✅ Scraped", sectors.length, "sectors");
 
-    await context.close();
     await browser.close();
 
     const dir = path.join("data", "raw", dateStr);
