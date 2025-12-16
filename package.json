@@ -1,0 +1,13 @@
+{
+  "name": "nepse-scraper-2",
+  "version": "1.0.0",
+  "description": "NEPSE sector & stock scraper",
+  "main": "sector.js",
+  "scripts": {
+    "sector": "node sector.js",
+    "stock": "node stock.js"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
