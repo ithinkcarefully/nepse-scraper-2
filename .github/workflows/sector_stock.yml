@@ -1,49 +1,97 @@
 name: Scrape Sector & Stock
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "*/10 5-9 * * 0-4"
-  workflow_dispatch:
 
 jobs:
   sector:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    env:
-      CENTRAL_REPO_OWNER: sakshyambanjade
-      CENTRAL_REPO_NAME: nepse-quant-bot-central
-      CENTRAL_REPO_TOKEN: ${{ secrets.CENTRAL_REPO_TOKEN }}
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: npm install
-      - run: npx playwright install
+
+      - name: Install deps
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
       - name: Run sector scraper
         env:
           FORCE_RUN: "true"
         run: node sector.js
 
+      - name: Clone central repo
+        env:
+          PAT: ${{ secrets.NEPSE_SCRAPER_PAT }}
+        run: |
+          cd /tmp
+          git clone --depth 1 https://sakshyambanjade:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git central-repo
+
+      - name: Copy data to central repo
+        run: |
+          mkdir -p /tmp/central-repo/data/raw
+          cp -rv $GITHUB_WORKSPACE/data/raw/* /tmp/central-repo/data/raw/ || true
+
+      - name: Push to central repo
+        env:
+          PAT: ${{ secrets.NEPSE_SCRAPER_PAT }}
+        run: |
+          cd /tmp/central-repo
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add data/
+          git commit -m "data: sector" || true
+          git push https://sakshyambanjade:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git main
+
   stock:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    env:
-      CENTRAL_REPO_OWNER: sakshyambanjade
-      CENTRAL_REPO_NAME: nepse-quant-bot-central
-      CENTRAL_REPO_TOKEN: ${{ secrets.CENTRAL_REPO_TOKEN }}
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: npm install
-      - run: npx playwright install
+
+      - name: Install deps
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
       - name: Run stock scraper
         env:
           FORCE_RUN: "true"
         run: node stock.js
+
+      - name: Clone central repo
+        env:
+          PAT: ${{ secrets.NEPSE_SCRAPER_PAT }}
+        run: |
+          cd /tmp
+          git clone --depth 1 https://sakshyambanjade:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git central-repo
+
+      - name: Copy data to central repo
+        run: |
+          mkdir -p /tmp/central-repo/data/raw
+          cp -rv $GITHUB_WORKSPACE/data/raw/* /tmp/central-repo/data/raw/ || true
+
+      - name: Push to central repo
+        env:
+          PAT: ${{ secrets.NEPSE_SCRAPER_PAT }}
+        run: |
+          cd /tmp/central-repo
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add data/
+          git commit -m "data: stock" || true
+          git push https://sakshyambanjade:${PAT}@github.com/sakshyambanjade/nepse-quant-bot-central.git main
