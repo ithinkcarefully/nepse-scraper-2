@@ -13,94 +13,61 @@ async function main() {
   const nowNepal = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Kathmandu" })
   );
+
   const hour = nowNepal.getHours();
   const minute = nowNepal.getMinutes();
   const forceRun = process.env.FORCE_RUN === "true";
-  const market = forceRun || (
-    (hour > 11 || (hour === 11 && minute >= 0)) &&
-    (hour < 15 || (hour === 15 && minute === 0))
-  );
-  if (!market) {
-    console.log("Outside NEPSE hours");
-    return;
-  }
+
+  const market =
+    forceRun ||
+    ((hour > 11 || (hour === 11 && minute >= 0)) &&
+      (hour < 15 || (hour === 15 && minute === 0)));
+
+  if (!market) return console.log("⏱ Outside market hours");
 
   const dateStr = nowNepal.toISOString().split("T")[0];
   const timestamp = nowNepal.toISOString();
 
-  console.log("stock scraper at", timestamp);
-
   let browser;
+
   try {
-    browser = await chromium.launch({
-      args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"]
-    });
-
-    const context = await browser.createBrowserContext({
-      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    });
-
-    const page = await context.newPage();
-    await page.setExtraHTTPHeaders({
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.5",
-      "DNT": "1",
-      "Connection": "keep-alive"
-    });
-
-    let retries = 3;
-    let loaded = false;
-    while (retries > 0 && !loaded) {
-      try {
-        await page.goto(URL, { waitUntil: "networkidle", timeout: 30000 });
-        loaded = true;
-      } catch (e) {
-        retries--;
-        console.log(`⚠ Retry... (${retries} left)`);
-        if (retries > 0) await page.waitForTimeout(5000);
-        else throw e;
-      }
-    }
-
+    browser = await chromium.launch({ args: ["--no-sandbox"] });
+    const page = await browser.newPage();
+    await page.goto(URL, { waitUntil: "networkidle", timeout: 30000 });
     await page.waitForTimeout(2000);
 
     const tx = await page.evaluate(() => {
-      const out = [];
-      const rows = document.querySelectorAll("table tbody tr");
-      rows.forEach((r, idx) => {
-        if (idx > 20) return;
-        const tds = r.querySelectorAll("td");
-        if (tds.length >= 5) {
-          out.push({
-            symbol: tds[0].textContent.trim(),
-            ltp: tds[1].textContent.trim(),
-            volume: tds[2].textContent.trim(),
-            turnover: tds[3].textContent.trim(),
-            change: tds[4].textContent.trim(),
-          });
-        }
-      });
-      return out;
+      return [...document.querySelectorAll("table tbody tr")].map(r => {
+        const t = r.querySelectorAll("td");
+        return t.length >= 5
+          ? {
+              symbol: t[0].textContent.trim(),
+              ltp: t[1].textContent.trim(),
+              volume: t[2].textContent.trim(),
+              turnover: t[3].textContent.trim(),
+              change: t[4].textContent.trim()
+            }
+          : null;
+      }).filter(Boolean);
     });
 
-    console.log("✅ Scraped", tx.length, "transactions");
-
-    await context.close();
     await browser.close();
 
     const dir = path.join("data", "raw", dateStr);
     fs.mkdirSync(dir, { recursive: true });
-    const filePath = path.join(dir, "stocktransaction.json");
-    let arr = [];
-    if (fs.existsSync(filePath)) {
-      arr = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    }
-    arr.push({ timestamp, transactions: tx });
-    fs.writeFileSync(filePath, JSON.stringify(arr, null, 2));
-    console.log("💾 stock saved");
 
-    if (!CENTRAL_REPO_TOKEN || !CENTRAL_REPO_OWNER) return;
+    const file = path.join(dir, "stocktransaction.json");
+    const arr = fs.existsSync(file)
+      ? JSON.parse(fs.readFileSync(file, "utf8"))
+      : [];
+
+    arr.push({ timestamp, transactions: tx });
+    fs.writeFileSync(file, JSON.stringify(arr, null, 2));
+
+    console.log("💾 Stock data saved");
+
+    if (!CENTRAL_REPO_OWNER || !CENTRAL_REPO_TOKEN) return;
+
     try {
       execSync("git init", { stdio: "ignore" });
       execSync(
@@ -108,21 +75,27 @@ async function main() {
         { stdio: "ignore" }
       );
     } catch {}
-    execSync('git config user.email "action@github.com"');
-    execSync('git config user.name "GitHub Action"');
-    execSync("git add data", { stdio: "ignore" });
+
+    execSync("git add data");
+
     try {
-      execSync('git commit -m "add stock"', { stdio: "ignore" });
-      execSync("git push origin HEAD:main", { stdio: "ignore" });
+      execSync('git commit -m "add stock"', { stdio: "pipe" });
+      console.log("✅ commit done");
+    } catch (e) {
+      console.log("⚠ commit failed:", e.message);
+    }
+
+    try {
+      execSync("git push origin HEAD:main", { stdio: "pipe" });
       console.log("✅ pushed");
-    } catch {
-      console.log("⚠ push failed");
+    } catch (e) {
+      console.log("❌ push failed:", e.message);
     }
   } catch (e) {
     console.error("❌ Error:", e.message);
     process.exit(1);
   } finally {
-    if (browser) await browser.close();
+    if (browser) await browser.close().catch(() => {});
   }
 }
 
